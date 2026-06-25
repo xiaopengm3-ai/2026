@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>为什么选择 SQLite — Leo's Log</title>
+<style>
+:root{--bg:#06060f;--text:#e8e8ec;--text-dim:#909096;--text-muted:#5a5a64;--warm:#d4a574;--warm-dim:#b8895e;--cool:#8ab4d8;--font-display:'Palatino Linotype',Georgia,'STZhongsong','华文中宋','SimSun',serif;--font-body:system-ui,'Segoe UI','Microsoft YaHei','微软雅黑',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;line-height:1.75;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0}
+main{position:relative;z-index:1}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:1.5rem 3rem}
+.back-link{color:rgba(255,255,255,0.6);text-decoration:none;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;transition:color .3s}
+.back-link:hover{color:var(--warm)}
+.logo{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:#fff;text-decoration:none;text-shadow:0 0 20px rgba(255,255,255,0.3)}
+.article-section{max-width:760px;margin:0 auto;padding:8rem 3rem 5rem}
+.article-glass{background:rgba(6,6,22,0.5);backdrop-filter:blur(44px);-webkit-backdrop-filter:blur(44px);border:1px solid rgba(255,255,255,0.1);border-top:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:3rem;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 0 rgba(255,255,255,0.06) inset,0 4px 24px rgba(0,0,0,0.3),0 0 40px rgba(160,180,255,0.06)}
+.article-glass::after{content:'';position:absolute;top:-50%;left:-50%;right:-50%;bottom:-50%;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,0.1) 0%,rgba(255,255,255,0.04) 20%,transparent 45%),radial-gradient(ellipse at 75% 85%,rgba(200,180,255,0.07) 0%,transparent 40%);pointer-events:none}
+.article-date{font-size:0.72rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--warm-dim);margin-bottom:0.5rem}
+.article-glass h1{font-family:var(--font-display);font-size:2.4rem;font-weight:600;line-height:1.25;letter-spacing:-0.015em;margin-bottom:1rem}
+.article-tags{display:flex;gap:0.5rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.article-tags .tag{font-size:0.62rem;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted)}
+.article-body{color:var(--text-dim);font-size:1rem;line-height:2.1}
+.article-body p{margin-bottom:1.5rem}
+.article-body h3{font-family:var(--font-display);font-size:1.4rem;font-weight:600;color:var(--text);margin:2.5rem 0 1rem;letter-spacing:-0.01em}
+.article-body code{background:rgba(255,255,255,0.06);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.9em;color:var(--cool)}
+.article-body pre{background:rgba(0,0,0,0.3);padding:1.2rem 1.5rem;border-radius:8px;overflow-x:auto;margin:1.5rem 0;font-size:0.85rem;line-height:1.7;border:1px solid rgba(255,255,255,0.06)}
+.music-player{position:fixed;bottom:2rem;right:2rem;z-index:200;display:flex;align-items:center;gap:0.75rem}
+.music-btn{width:48px;height:48px;border-radius:50%;background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;color:var(--text);font-size:1.1rem;box-shadow:0 4px 20px rgba(0,0,0,0.35);flex-shrink:0;position:relative}
+.music-btn:hover{border-color:rgba(255,255,255,0.18)}
+.music-btn.playing{border-color:var(--warm-dim);box-shadow:0 0 20px rgba(212,165,116,0.15)}
+.music-btn.playing .vinyl-icon{animation:vinylSpin 3s linear infinite}
+@keyframes vinylSpin{to{transform:rotate(360deg)}}
+.music-info{background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem 1rem;font-size:0.72rem;color:var(--text-dim);white-space:nowrap;opacity:0;transform:translateX(10px);transition:all .4s;pointer-events:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.music-player:hover .music-info,.music-player.visible .music-info{opacity:1;transform:translateX(0)}
+.music-pulse{position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--warm-dim);opacity:0;animation:pulseRing 2s ease-out infinite;pointer-events:none}
+.music-btn.playing .music-pulse{opacity:1}
+@keyframes pulseRing{0%{transform:scale(1);opacity:0.5}100%{transform:scale(1.6);opacity:0}}
+@media(max-width:768px){nav{padding:1.25rem 1.5rem}.article-section{padding:6rem 1.5rem 3rem}.article-glass{padding:1.75rem}.article-glass h1{font-size:1.6rem}.music-player{bottom:1.25rem;right:1.25rem}.music-btn{width:40px;height:40px;font-size:0.95rem}.music-info{display:none}}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+  <nav><a href="index.html" class="back-link">&larr; Back</a><a href="index.html" class="logo">Leo</a></nav>
+  <article class="article-section">
+    <div class="article-glass">
+      <div class="article-date">2026.05.08</div>
+      <h1>为什么我选择 SQLite 作为独立开发的首选数据库</h1>
+      <div class="article-tags"><span class="tag">Database</span><span class="tag">SQLite</span><span class="tag">Side Project</span></div>
+      <div class="article-body">
+<p>PostgreSQL 很棒。MySQL 也很棒。但对于 side project 和独立开发来说，它们大多数时候都是过度设计。这篇文章聊聊为什么我的所有个人项目都首选 SQLite。</p>
+<h3>零运维是杀手特性</h3>
+<p>SQLite 不需要安装服务、不需要配置用户权限、不需要管理连接池。数据库就是一个文件。备份？<code>cp data.db data.db.bak</code>。迁移到新服务器？scp 一个文件就完事。</p>
+<p>对于一个 side project 来说，运维开销是杀死项目的第一大原因。当你在下班后只有两个小时写代码时，你不想花半小时在调试 PostgreSQL 的认证问题上。</p>
+<h3>WAL 模式改变了游戏规则</h3>
+<p>SQLite 3.7 引入的 WAL（Write-Ahead Logging）模式让并发读写性能有了质的飞跃。在 WAL 模式下，读操作不会阻塞写操作，反之亦然。对于大多数 web 应用来说，这已经足够了。</p>
+<pre>PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+PRAGMA busy_timeout=5000;</pre>
+<p>这三行配置打开之后，SQLite 可以轻松支撑每秒数百次读写。对个人项目的流量来说，绰绰有余。</p>
+<h3>Litestream：实时备份到 S3</h3>
+<p>SQLite 最被诟病的一点是"不适合生产环境"。但 Litestream 的出现在很大程度上解决了这个问题——它实时流式复制 SQLite 的 WAL 日志到 S3 兼容存储，实现秒级 RPO 的灾难恢复。</p>
+<p>配置只需要一行命令：</p>
+<pre>litestream replicate data.db s3://my-bucket/data.db</pre>
+<p>跑起来之后，你的数据库每一秒都在被备份到云端。服务器挂了，拿回文件就行。</p>
+<h3>什么时候不该用 SQLite</h3>
+<p>公平地说，SQLite 不适合所有场景：需要多机写入的分布式系统、超大并发（>1000 QPS 写入）、以及需要行级权限控制的场景，还是用 PostgreSQL 更好。但说实话，大部分 side project 永远达不到这个量级。</p>
+
+</div>
+    </div>
+  </article>
+  <div class="music-player" id="musicPlayer">
+    <button class="music-btn" id="musicBtn"><span class="vinyl-icon">&#9835;</span><span class="music-pulse"></span></button>
+    <span class="music-info" id="musicInfo">上海乐团管弦乐团与合唱团歌</span>
+  </div>
+  <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+</main>
+<script src="shared.js"></script>
+</body>
+</html>

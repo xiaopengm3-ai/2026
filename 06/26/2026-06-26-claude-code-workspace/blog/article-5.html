@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设计一个交易机器人的反思 — Leo's Log</title>
+<style>
+:root {
+  --bg: #06060f; --text: #e8e8ec; --text-dim: #909096; --text-muted: #5a5a64;
+  --warm: #d4a574; --warm-dim: #b8895e; --cool: #8ab4d8;
+  --font-display: 'Palatino Linotype', Georgia, 'STZhongsong', '华文中宋', 'SimSun', serif;
+  --font-body: system-ui, 'Segoe UI', 'Microsoft YaHei', '微软雅黑', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;line-height:1.75;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0}
+main{position:relative;z-index:1;pointer-events:auto}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:1.5rem 3rem}
+.back-link{color:rgba(255,255,255,0.6);text-decoration:none;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;transition:color .3s}
+.back-link:hover{color:var(--warm)}
+.logo{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:#fff;text-decoration:none;text-shadow:0 0 20px rgba(255,255,255,0.3)}
+
+.article-section{max-width:760px;margin:0 auto;padding:8rem 3rem 5rem}
+.article-glass{background:rgba(6,6,22,0.5);backdrop-filter:blur(44px);-webkit-backdrop-filter:blur(44px);border:1px solid rgba(255,255,255,0.1);border-top:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:3rem;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 0 rgba(255,255,255,0.06) inset,0 4px 24px rgba(0,0,0,0.3),0 0 40px rgba(160,180,255,0.06)}
+.article-glass::after{content:'';position:absolute;top:-50%;left:-50%;right:-50%;bottom:-50%;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,0.1) 0%,rgba(255,255,255,0.04) 20%,transparent 45%),radial-gradient(ellipse at 75% 85%,rgba(200,180,255,0.07) 0%,transparent 40%);pointer-events:none}
+
+.article-date{font-size:0.72rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--warm-dim);margin-bottom:0.5rem}
+.article-glass h1{font-family:var(--font-display);font-size:2.4rem;font-weight:600;line-height:1.25;letter-spacing:-0.015em;margin-bottom:1rem}
+.article-tags{display:flex;gap:0.5rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.article-tags .tag{font-size:0.62rem;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted)}
+.article-body{color:var(--text-dim);font-size:1rem;line-height:2.1}
+.article-body p{margin-bottom:1.5rem}
+.article-body h3{font-family:var(--font-display);font-size:1.4rem;font-weight:600;color:var(--text);margin:2.5rem 0 1rem;letter-spacing:-0.01em}
+.article-body code{background:rgba(255,255,255,0.06);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.9em;color:var(--cool)}
+.article-body pre{background:rgba(0,0,0,0.3);padding:1.2rem 1.5rem;border-radius:8px;overflow-x:auto;margin:1.5rem 0;font-size:0.85rem;line-height:1.7;border:1px solid rgba(255,255,255,0.06)}
+
+/* Music player */
+.music-player{position:fixed;bottom:2rem;right:2rem;z-index:200;display:flex;align-items:center;gap:0.75rem}
+.music-btn{width:48px;height:48px;border-radius:50%;background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;color:var(--text);font-size:1.1rem;box-shadow:0 4px 20px rgba(0,0,0,0.35);flex-shrink:0;position:relative}
+.music-btn:hover{border-color:rgba(255,255,255,0.18)}
+.music-btn.playing{border-color:var(--warm-dim);box-shadow:0 0 20px rgba(212,165,116,0.15)}
+.music-btn.playing .vinyl-icon{animation:vinylSpin 3s linear infinite}
+@keyframes vinylSpin{to{transform:rotate(360deg)}}
+.music-info{background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem 1rem;font-size:0.72rem;color:var(--text-dim);white-space:nowrap;opacity:0;transform:translateX(10px);transition:all .4s;pointer-events:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.music-player:hover .music-info,.music-player.visible .music-info{opacity:1;transform:translateX(0)}
+.music-pulse{position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--warm-dim);opacity:0;animation:pulseRing 2s ease-out infinite;pointer-events:none}
+.music-btn.playing .music-pulse{opacity:1}
+@keyframes pulseRing{0%{transform:scale(1);opacity:0.5}100%{transform:scale(1.6);opacity:0}}
+
+@media(max-width:768px){
+  nav{padding:1.25rem 1.5rem}
+  .article-section{padding:6rem 1.5rem 3rem}
+  .article-glass{padding:1.75rem}
+  .article-glass h1{font-size:1.6rem}
+  .music-player{bottom:1.25rem;right:1.25rem}
+  .music-btn{width:40px;height:40px;font-size:0.95rem}
+  .music-info{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+  <nav>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <a href="index.html" class="logo">Leo</a>
+  </nav>
+  <article class="article-section">
+    <div class="article-glass">
+      <div class="article-date">2026.03.28</div>
+      <h1>设计一个交易机器人的反思</h1>
+      <div class="article-tags"><span class="tag">Trading</span><span class="tag">Python</span><span class="tag">Finance</span></div>
+      <div class="article-body">
+
+<p>今年年初我花了将近两个月的时间，从零开始用 Python 写了一个 BTC 交易机器人。从策略设计到回测框架，从模拟盘到小资金实盘，每一步踩坑都让我对"自动化交易"这四个字有了完全不同的理解。这篇文章总结这段经历，重点不是代码，而是那些在动手之前应该想清楚的事。</p>
+
+<h3>策略设计：RSI 均值回归</h3>
+
+<p>策略本身并不复杂——经典的 RSI 均值回归。当 15 分钟 K 线的 RSI 低于 30 时视为超卖，做多；高于 70 时视为超买，平仓或做空。看起来很简单，但真正开始写代码时会发现细节爆炸。</p>
+
+<p>最核心的决策之一是 <strong>周期的选择</strong>。15 分钟的 K 线粒度意味着每天会触发大约 3-5 次交易信号。如果周期太短（比如 1 分钟），噪音太大，手续费吃掉大部分利润；如果太长（比如 1 小时），信号太少，资金利用率低。这个选择没有绝对正确的答案——它取决于你的风险偏好、资金规模和盯盘频率。</p>
+
+<p>信号的确认逻辑也需要仔细设计。直接用 RSI 穿越阈值作为信号会导致频繁的假突破——价格短暂穿越之后迅速回弹。一个简单的改进是"确认 K 线"——RSI 阈值穿越后在下一根 K 线确认方向后再执行。这会减少约 30% 的交易次数，但提升显著了胜率：</p>
+
+<pre>def should_enter_long(df, idx):
+    rsi_now = df['rsi'].iloc[idx]
+    rsi_prev = df['rsi'].iloc[idx - 1]
+    # 确认信号：RSI 从超卖区域反弹并确认
+    crossed = rsi_prev < 30 and rsi_now >= 30
+    confirmed = df['close'].iloc[idx] > df['close'].iloc[idx - 1]
+    return crossed and confirmed</pre>
+
+<h3>回测的陷阱</h3>
+
+<p>回测可能是整个项目里最容易自欺欺人的环节。我只犯过三个典型的错误，但每一个都足以让一个看上去很好的策略在实盘中爆仓。</p>
+
+<p><strong>幸存者偏差</strong>——如果你用"现存的"交易对做回测，你已经剔除了所有退市、归零的币种。这对于 BTC 来说影响较小，但如果你的策略涉及山寨币，这就是一个致命的统计偏差。</p>
+
+<p><strong>前视偏差 (Look-ahead Bias)</strong>——这是最容易犯也最难察觉的错误。一个典型的例子：在计算 RSI 时无意中用到了当根 K 线的收盘价，但在实盘中你无法在 K 线收盘前知道这个价格。排查方法是严格检查每一行回测代码，确保时间 t 的决策只使用时间 t-1 及之前的信息。</p>
+
+<p><strong>过拟合</strong>——调整 RSI 参数（周期长度、阈值）直到回测曲线完美，这在统计上几乎等同于曲线拟合。我的做法是：只用 70% 的历史数据做参数优化，剩下 30% 做样本外验证。任何在样本外数据上表现显著变差的参数组合，直接丢弃。</p>
+
+<p>还有一个容易被忽视的问题——<strong>手续费和滑点</strong>。Binance 现货手续费 0.1%，看起来不多，但每天 5 次交易的话，一个月就是约 15% 的摩擦成本。如果你的策略年化收益 30%，手续费就能吃掉一半。回测时一定要模拟真实的手续费结构，否则结果毫无意义。</p>
+
+<h3>从模拟盘到实盘的心态鸿沟</h3>
+
+<p>我在模拟盘上跑了两个星期，年化收益约 45%，最大回撤 12%。数据看起来不错，于是放了一笔小钱进入实盘。结果第一周就遇到了连续 3 次止损，账面上亏损了 8%。</p>
+
+<p>模拟盘和实盘之间的差别不仅仅是执行层面的。真正的差异在于：<strong>当你的真实资金在缩水时，你会开始怀疑策略</strong>。你会忍不住去看每一根 K 线，想手动干预——"这次看起来不太一样，我先平仓吧"——但如果你的手动干预比策略本身更差（统计上几乎必然如此），那你就在帮倒忙。</p>
+
+<p>我花了两周才学会"不看不碰"。这听起来像个笑话，但它是交易中最难的功课之一。最终我写了一个小脚本，每当机器人在运行时，自动锁定交易界面，不让我手动操作。听起来滑稽，但效果很好。</p>
+
+<h3>结语：机器人的真正价值</h3>
+
+<p>如果你期望一个自动交易机器人能让你躺着赚钱，我可以直接告诉你——它做不到。至少不是你想的那种方式。</p>
+
+<p>机器人的真正价值在于<strong>纪律性</strong>。它不会在亏损后恐慌，不会在盈利后贪婪，不会因为熬夜到凌晨三点而做出错误判断。人类交易员的绝大多数亏损来自于情绪决策，而不是策略本身的问题。一个好的交易机器人，是把你从这些情绪决策中解放出来的工具。</p>
+
+<p>写机器人的过程，迫使我系统地思考交易中的每一个假设——进入条件、退出条件、仓位大小、止损位置——并把这些思考转化为可以被历史数据验证的代码。这本身就是一种价值，无论最终是否赚钱。如果你是一个喜欢交易的工程师，我强烈建议你尝试自己写一个——不是为了暴富，而是为了更深刻地理解你在做什么。</p>
+
+      </div>
+    </div>
+  </article>
+
+  <div class="music-player" id="musicPlayer">
+    <button class="music-btn" id="musicBtn"><span class="vinyl-icon">&#9835;</span><span class="music-pulse"></span></button>
+    <span class="music-info" id="musicInfo">上海乐团管弦乐团与合唱团歌</span>
+  </div>
+  <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+</main>
+<script src="shared.js"></script>
+</body>
+</html>

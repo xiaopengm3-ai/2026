@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>构建一个新闻聚合器 — Leo's Log</title>
+<style>
+:root {
+  --bg: #06060f; --text: #e8e8ec; --text-dim: #909096; --text-muted: #5a5a64;
+  --warm: #d4a574; --warm-dim: #b8895e; --cool: #8ab4d8;
+  --font-display: 'Palatino Linotype', Georgia, 'STZhongsong', '华文中宋', 'SimSun', serif;
+  --font-body: system-ui, 'Segoe UI', 'Microsoft YaHei', '微软雅黑', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;line-height:1.75;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0}
+main{position:relative;z-index:1;pointer-events:auto}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:1.5rem 3rem}
+.back-link{color:rgba(255,255,255,0.6);text-decoration:none;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;transition:color .3s}
+.back-link:hover{color:var(--warm)}
+.logo{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:#fff;text-decoration:none;text-shadow:0 0 20px rgba(255,255,255,0.3)}
+
+.article-section{max-width:760px;margin:0 auto;padding:8rem 3rem 5rem}
+.article-glass{background:rgba(6,6,22,0.5);backdrop-filter:blur(44px);-webkit-backdrop-filter:blur(44px);border:1px solid rgba(255,255,255,0.1);border-top:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:3rem;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 0 rgba(255,255,255,0.06) inset,0 4px 24px rgba(0,0,0,0.3),0 0 40px rgba(160,180,255,0.06)}
+.article-glass::after{content:'';position:absolute;top:-50%;left:-50%;right:-50%;bottom:-50%;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,0.1) 0%,rgba(255,255,255,0.04) 20%,transparent 45%),radial-gradient(ellipse at 75% 85%,rgba(200,180,255,0.07) 0%,transparent 40%);pointer-events:none}
+
+.article-date{font-size:0.72rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--warm-dim);margin-bottom:0.5rem}
+.article-glass h1{font-family:var(--font-display);font-size:2.4rem;font-weight:600;line-height:1.25;letter-spacing:-0.015em;margin-bottom:1rem}
+.article-tags{display:flex;gap:0.5rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.article-tags .tag{font-size:0.62rem;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted)}
+.article-body{color:var(--text-dim);font-size:1rem;line-height:2.1}
+.article-body p{margin-bottom:1.5rem}
+.article-body h3{font-family:var(--font-display);font-size:1.4rem;font-weight:600;color:var(--text);margin:2.5rem 0 1rem;letter-spacing:-0.01em}
+.article-body code{background:rgba(255,255,255,0.06);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.9em;color:var(--cool)}
+.article-body pre{background:rgba(0,0,0,0.3);padding:1.2rem 1.5rem;border-radius:8px;overflow-x:auto;margin:1.5rem 0;font-size:0.85rem;line-height:1.7;border:1px solid rgba(255,255,255,0.06)}
+
+/* Music player */
+.music-player{position:fixed;bottom:2rem;right:2rem;z-index:200;display:flex;align-items:center;gap:0.75rem}
+.music-btn{width:48px;height:48px;border-radius:50%;background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;color:var(--text);font-size:1.1rem;box-shadow:0 4px 20px rgba(0,0,0,0.35);flex-shrink:0;position:relative}
+.music-btn:hover{border-color:rgba(255,255,255,0.18)}
+.music-btn.playing{border-color:var(--warm-dim);box-shadow:0 0 20px rgba(212,165,116,0.15)}
+.music-btn.playing .vinyl-icon{animation:vinylSpin 3s linear infinite}
+@keyframes vinylSpin{to{transform:rotate(360deg)}}
+.music-info{background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem 1rem;font-size:0.72rem;color:var(--text-dim);white-space:nowrap;opacity:0;transform:translateX(10px);transition:all .4s;pointer-events:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.music-player:hover .music-info,.music-player.visible .music-info{opacity:1;transform:translateX(0)}
+.music-pulse{position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--warm-dim);opacity:0;animation:pulseRing 2s ease-out infinite;pointer-events:none}
+.music-btn.playing .music-pulse{opacity:1}
+@keyframes pulseRing{0%{transform:scale(1);opacity:0.5}100%{transform:scale(1.6);opacity:0}}
+
+@media(max-width:768px){
+  nav{padding:1.25rem 1.5rem}
+  .article-section{padding:6rem 1.5rem 3rem}
+  .article-glass{padding:1.75rem}
+  .article-glass h1{font-size:1.6rem}
+  .music-player{bottom:1.25rem;right:1.25rem}
+  .music-btn{width:40px;height:40px;font-size:0.95rem}
+  .music-info{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+  <nav>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <a href="index.html" class="logo">Leo</a>
+  </nav>
+  <article class="article-section">
+    <div class="article-glass">
+      <div class="article-date">2026.05.20</div>
+      <h1>构建一个新闻聚合器：从 RSS 到分布式爬虫</h1>
+      <div class="article-tags"><span class="tag">Python</span><span class="tag">Architecture</span><span class="tag">Crawler</span></div>
+      <div class="article-body">
+
+<p>2026 年初，我决定从零开始构建一个覆盖 40+ 信息源的新闻聚合系统。最初只是想把晨间浏览新闻这件事自动化，但很快就发现这件事远比想象中复杂。这篇文章记录整个构建过程、踩过的坑以及最终的架构选择。</p>
+
+<h3>第一版：纯 RSS</h3>
+<p>最初的方案很简单——Python 标准库加上 RSS 解析就够了。feedparser 加上 asyncio，半小时就能跑通一个原型。每天定时拉取几个 RSS 源，去重后推送到飞书，轻松愉快。</p>
+<p>问题很快就暴露了：高价值的信息源——微博热搜、GitHub Trending、华尔街见闻——根本不提供 RSS。它们的内容只能通过网页抓取获得。于是第二版的爬虫引擎诞生了。</p>
+
+<h3>第二版：加入 Web Scraping</h3>
+<p>引入 <code>requests</code> + <code>beautifulsoup4</code> 后，信息源从 15 个扩展到 40 个。但这带来了一整套新的工程问题：</p>
+<p>首先是反爬对抗。不同网站的反爬策略天差地别——有的检查 User-Agent，有的做 TLS 指纹检测，有的在响应里埋 honeypot 链接。我开始维护一个源级别的配置表，为每个源定制请求头、延时策略和重试逻辑。</p>
+<p>其次是内容去重。不同源经常报道同一条新闻，标题相似但措辞不同。简单的 SimHash 效果不好，最终用了 MinHash + LSH 的组合方案，准确率提升到 93% 左右。</p>
+
+<h3>最终架构</h3>
+<p>在迭代了四个版本之后，架构稳定下来：</p>
+<pre>news.py (CLI 入口)
+  ├── sources/          # 40+ 信息源适配器
+  │   ├── rss/          # RSS 源 (feedparser)
+  │   ├── web/          # Web 抓取 (requests + bs4)
+  │   └── api/          # API 源 (GitHub, 微博)
+  ├── dedup/            # 去重引擎 (MinHash + LSH)
+  ├── translate/        # 可选翻译模块
+  └── notify/           # 推送模块 (飞书/钉钉/邮件)</pre>
+
+<p>每个源都是一个实现了统一接口的适配器，需要时可以通过 <code>--source</code> 参数单独调用，也支持分类聚合查询。</p>
+
+<h3>经验教训</h3>
+<p>最大的教训是：<strong>不要过早做分布式</strong>。第三版我曾试图用 Celery + Redis 做分布式爬虫架构，结果调度开销比爬取本身还大。回退到单进程 asyncio 之后，40 个源 8 秒内就能全部跑完。</p>
+<p>第二个教训是：RSS 源的生命周期比想象中短。15 个初始 RSS 源中，不到一年就有 3 个停止更新、2 个更换域名。需要持续监控和维护。</p>
+<p>目前这个聚合器已经稳定运行了三个月，每天早上自动推送，出错率不到 2%。如果你也在做类似的事情，可以直接用我的脚本——不需要 API Key，纯 Python 实现。</p>
+
+      </div>
+    </div>
+  </article>
+
+  <div class="music-player" id="musicPlayer">
+    <button class="music-btn" id="musicBtn"><span class="vinyl-icon">&#9835;</span><span class="music-pulse"></span></button>
+    <span class="music-info" id="musicInfo">上海乐团管弦乐团与合唱团歌</span>
+  </div>
+  <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+</main>
+<script src="shared.js"></script>
+</body>
+</html>

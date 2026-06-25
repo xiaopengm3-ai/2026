@@ -1,0 +1,44 @@
+# === 回测参数 ===
+initial_cash: 10000
+start_date: "2020-01-01"
+end_date: "2025-12-31"
+benchmark: "ETH/USDT"
+
+# === 交易模式 (Perpetual Futures) ===
+trading:
+  mode: "futures"           # spot | futures
+  leverage: 2               # 杠杆倍数 (1-5x)
+  margin_mode: "isolated"   # isolated | cross
+  funding_rate_annual: 0.08 # 年均资金费率（多头支付，估算值）
+
+# === 交易成本 (Binance Futures) ===
+commission: 0.0004          # taker 0.04%
+slippage: 0.0005            # 0.05%
+
+# === 策略信号（不变） ===
+indicators:
+  sma_fast_period: 20
+  sma_slow_period: 50
+  rsi_period: 14
+  atr_period: 14
+  atr_multiplier: 2.0
+  rsi_buy_threshold: 70
+  use_macd_filter: true
+  use_kdj_filter: true
+  time_stop_bars: 60
+  time_stop_return: 0.02
+
+# === 风控参数 ===
+risk:
+  position_ratio: 0.20         # 每次使用保证金的 20%
+  max_leverage_exposure: 0.40  # 最大名义敞口 = 本金 * 杠杆 * 此比例
+  max_equity_drawdown: 0.20
+  max_consecutive_losses: 3
+  min_margin_ratio: 0.15       # 维持保证金率，低于此值减仓
+  cooling_off_bars: 90
+
+# === 数据源 ===
+data_source: "binance_futures"
+symbol: "ETH/USDT"
+data_cycle: "daily"
+market: "Crypto"

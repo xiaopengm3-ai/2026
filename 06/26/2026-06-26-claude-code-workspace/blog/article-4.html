@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows 上的开发环境：2026 版 — Leo's Log</title>
+<style>
+:root {
+  --bg: #06060f; --text: #e8e8ec; --text-dim: #909096; --text-muted: #5a5a64;
+  --warm: #d4a574; --warm-dim: #b8895e; --cool: #8ab4d8;
+  --font-display: 'Palatino Linotype', Georgia, 'STZhongsong', '华文中宋', 'SimSun', serif;
+  --font-body: system-ui, 'Segoe UI', 'Microsoft YaHei', '微软雅黑', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;line-height:1.75;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0}
+main{position:relative;z-index:1;pointer-events:auto}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:1.5rem 3rem}
+.back-link{color:rgba(255,255,255,0.6);text-decoration:none;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;transition:color .3s}
+.back-link:hover{color:var(--warm)}
+.logo{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:#fff;text-decoration:none;text-shadow:0 0 20px rgba(255,255,255,0.3)}
+
+.article-section{max-width:760px;margin:0 auto;padding:8rem 3rem 5rem}
+.article-glass{background:rgba(6,6,22,0.5);backdrop-filter:blur(44px);-webkit-backdrop-filter:blur(44px);border:1px solid rgba(255,255,255,0.1);border-top:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:3rem;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 0 rgba(255,255,255,0.06) inset,0 4px 24px rgba(0,0,0,0.3),0 0 40px rgba(160,180,255,0.06)}
+.article-glass::after{content:'';position:absolute;top:-50%;left:-50%;right:-50%;bottom:-50%;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,0.1) 0%,rgba(255,255,255,0.04) 20%,transparent 45%),radial-gradient(ellipse at 75% 85%,rgba(200,180,255,0.07) 0%,transparent 40%);pointer-events:none}
+
+.article-date{font-size:0.72rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--warm-dim);margin-bottom:0.5rem}
+.article-glass h1{font-family:var(--font-display);font-size:2.4rem;font-weight:600;line-height:1.25;letter-spacing:-0.015em;margin-bottom:1rem}
+.article-tags{display:flex;gap:0.5rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.article-tags .tag{font-size:0.62rem;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted)}
+.article-body{color:var(--text-dim);font-size:1rem;line-height:2.1}
+.article-body p{margin-bottom:1.5rem}
+.article-body h3{font-family:var(--font-display);font-size:1.4rem;font-weight:600;color:var(--text);margin:2.5rem 0 1rem;letter-spacing:-0.01em}
+.article-body code{background:rgba(255,255,255,0.06);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.9em;color:var(--cool)}
+.article-body pre{background:rgba(0,0,0,0.3);padding:1.2rem 1.5rem;border-radius:8px;overflow-x:auto;margin:1.5rem 0;font-size:0.85rem;line-height:1.7;border:1px solid rgba(255,255,255,0.06)}
+
+/* Music player */
+.music-player{position:fixed;bottom:2rem;right:2rem;z-index:200;display:flex;align-items:center;gap:0.75rem}
+.music-btn{width:48px;height:48px;border-radius:50%;background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;color:var(--text);font-size:1.1rem;box-shadow:0 4px 20px rgba(0,0,0,0.35);flex-shrink:0;position:relative}
+.music-btn:hover{border-color:rgba(255,255,255,0.18)}
+.music-btn.playing{border-color:var(--warm-dim);box-shadow:0 0 20px rgba(212,165,116,0.15)}
+.music-btn.playing .vinyl-icon{animation:vinylSpin 3s linear infinite}
+@keyframes vinylSpin{to{transform:rotate(360deg)}}
+.music-info{background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem 1rem;font-size:0.72rem;color:var(--text-dim);white-space:nowrap;opacity:0;transform:translateX(10px);transition:all .4s;pointer-events:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.music-player:hover .music-info,.music-player.visible .music-info{opacity:1;transform:translateX(0)}
+.music-pulse{position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--warm-dim);opacity:0;animation:pulseRing 2s ease-out infinite;pointer-events:none}
+.music-btn.playing .music-pulse{opacity:1}
+@keyframes pulseRing{0%{transform:scale(1);opacity:0.5}100%{transform:scale(1.6);opacity:0}}
+
+@media(max-width:768px){
+  nav{padding:1.25rem 1.5rem}
+  .article-section{padding:6rem 1.5rem 3rem}
+  .article-glass{padding:1.75rem}
+  .article-glass h1{font-size:1.6rem}
+  .music-player{bottom:1.25rem;right:1.25rem}
+  .music-btn{width:40px;height:40px;font-size:0.95rem}
+  .music-info{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+  <nav>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <a href="index.html" class="logo">Leo</a>
+  </nav>
+  <article class="article-section">
+    <div class="article-glass">
+      <div class="article-date">2026.04.10</div>
+      <h1>Windows 上的开发环境：2026 版</h1>
+      <div class="article-tags"><span class="tag">Tooling</span><span class="tag">Windows</span><span class="tag">DevEnv</span></div>
+      <div class="article-body">
+
+<p>用了三年 macOS，去年切换回 Windows 11。有很多人不理解——"从 Unix 回到 Windows 不是自废武功吗？"——但 2026 年的 WSL2 已经足够好，好到我几乎感受不到差异，同时还能享受 Windows 的硬件兼容性和游戏体验。这篇文章整理了我的开发环境配置，希望对同样在 Windows 上做开发的朋友有帮助。</p>
+
+<h3>WSL2：类 Unix 体验的核心</h3>
+
+<p>WSL2 在 2026 年已经有了相当成熟的生态。它不是一个虚拟机模拟器，而是一个在 Hyper-V 轻量级虚拟机中运行的真实 Linux 内核。这意味着 Docker、systemd、GPU 直通都已经出奇地好用。</p>
+
+<p>安装已经极其简单——一行命令：<code>wsl --install</code>。默认会安装 Ubuntu 24.04 LTS。我额外做了几个配置：</p>
+
+<p>首先，在 WSL 的 <code>/etc/wsl.conf</code> 中禁止 Windows PATH 自动注入。这是很多性能问题的来源——Windows 的可执行文件路径被挂载到 WSL 中，导致每次 shell 启动时都要遍历 Windows 的 <code>PATH</code>，启动速度从 0.3 秒变成 3 秒：</p>
+
+<pre>[interop]
+appendWindowsPath = false</pre>
+
+<p>其次，把代码放在 WSL 文件系统中而不是 <code>/mnt/c</code>。跨文件系统的 I/O 性能差异巨大——在 <code>/mnt/c</code> 上跑 <code>npm install</code> 比在 <code>~</code> 目录下慢了将近 10 倍。用 <code>\\wsl$\</code> 路径可以在 Windows 端用 VS Code 直接打开 WSL 内的文件。</p>
+
+<h3>Windows Terminal + PowerShell 配置</h3>
+
+<p>Windows Terminal 是目前最好的终端模拟器之一，甚至比 macOS 的 Terminal.app 更好用。我的配置偏好：</p>
+
+<p><strong>终端配置</strong>——默认启动 WSL 的 Ubuntu profile，而不是 PowerShell。快捷键绑定了 <code>Alt+D</code> 分屏、<code>Alt+Shift+D</code> 垂直分屏。字体用 <code>Cascadia Code</code>——微软专门为终端设计的等宽字体，连字特性在阅读代码时非常舒服。</p>
+
+<p><strong>PowerShell Profile</strong>——虽然大部分时间在 WSL 里，但 PowerShell 仍然负责一些 Windows 特有的操作。我的 <code>$PROFILE</code> 配置了几样东西：</p>
+
+<pre># 简洁提示符
+function prompt { "$(Get-Location) > " }
+
+# 常用 alias
+function g { git $args }
+function gst { git status }
+function gco { git checkout $args }
+
+# Starship prompt
+Invoke-Expression (&starship init powershell)</pre>
+
+<p>用了 <code>Starship</code> 做跨 shell 的 prompt 主题——一套配置同时支持 PowerShell 和 WSL 里的 bash/zsh。Starship 在速度上比 <code>oh-my-posh</code> 快了一个数量级，因为它是 Rust 编译的原生二进制。</p>
+
+<h3>包管理器的选择</h3>
+
+<p>Windows 侧的包管理器我最终只留了两个：<code>winget</code> 和 <code>scoop</code>。两者定位不同：</p>
+
+<p><code>winget</code> 是微软官方的包管理器，适合安装"正经软件"——VS Code、Firefox、Docker Desktop 这类。它直接对接 Microsoft Store 和各个软件厂商的 CDN，可靠性最高。</p>
+
+<p><code>scoop</code> 是社区驱动的，适合安装开发工具——<code>neovim</code>、<code>lazygit</code>、<code>ripgrep</code>、<code>fzf</code> 之类的命令行工具。scoop 的特点是不需要管理员权限，所有软件装到用户目录下，干净无污染。更重要的是 scoop 支持 bucket 机制，extras bucket 里有很多社区维护的包：</p>
+
+<pre>scoop install neovim lazygit ripgrep fzf bat fd</pre>
+
+<p>Linux 侧（WSL 内）我用 <code>mise</code> 作为运行时版本管理器，替代了以前分散在各处的 <code>nvm</code>、<code>pyenv</code>、<code>rbenv</code>。mise 的一个配置文件 <code>.mise.toml</code> 就能管理 Node.js、Python、Go 的版本，比维护三套不同的版本管理器清爽很多。</p>
+
+<h3>工具推荐清单</h3>
+
+<p><strong>VS Code</strong>——没有悬念的编辑器首选。WSL Remote 插件让你在 Windows 上写代码、在 Linux 上运行。Dev Containers 插件让你把整个开发环境声明为 Dockerfile，团队新成员加入时一键启动。</p>
+
+<p><strong>Claude Code</strong>——2026 年 AI 辅助编程的标配。从代码补全到 PR review、从 bug 修复到重构建议，深度整合到了日常 workflow 中。CLI 模式可以直接在终端中对话，不需要离开编辑器。</p>
+
+<p><strong>Everything</strong>——Windows 的杀手级文件搜索工具，NTFS MFT 索引级别的即时搜索。在 WSL 里找不到文件时切回 Windows 用 Everything 定位，一秒不到出结果。</p>
+
+<p><strong>PowerToys</strong>——微软官方的 Windows 增强工具集。最常用的三个功能：FancyZones 窗口管理（自定义分屏布局，比 Windows 11 原生的 Snap 灵活得多）、Keyboard Manager（重映射键位，我把 Caps Lock 映射为 Escape-Ctrl 双修饰键）、以及 Text Extractor（OCR 提取屏幕文字，类似 macOS 的 Live Text）。</p>
+
+<p>总的来说，2026 年的 Windows 11 + WSL2 已经是一个出色的开发平台。Unix purist 可能会皱眉，但从工程实用主义的角度出发，它提供了目前最好的平衡——Linux 级别的开发体验，加上 Windows 的硬件生态和桌面软件兼容性。如果你在考虑切换，现在是个好时机。</p>
+
+      </div>
+    </div>
+  </article>
+
+  <div class="music-player" id="musicPlayer">
+    <button class="music-btn" id="musicBtn"><span class="vinyl-icon">&#9835;</span><span class="music-pulse"></span></button>
+    <span class="music-info" id="musicInfo">上海乐团管弦乐团与合唱团歌</span>
+  </div>
+  <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+</main>
+<script src="shared.js"></script>
+</body>
+</html>

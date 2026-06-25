@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从零读懂 Asar 打包格式 — Leo's Log</title>
+<style>
+:root {
+  --bg: #06060f; --text: #e8e8ec; --text-dim: #909096; --text-muted: #5a5a64;
+  --warm: #d4a574; --warm-dim: #b8895e; --cool: #8ab4d8;
+  --font-display: 'Palatino Linotype', Georgia, 'STZhongsong', '华文中宋', 'SimSun', serif;
+  --font-body: system-ui, 'Segoe UI', 'Microsoft YaHei', '微软雅黑', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;line-height:1.75;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0}
+main{position:relative;z-index:1;pointer-events:auto}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:1.5rem 3rem}
+.back-link{color:rgba(255,255,255,0.6);text-decoration:none;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;transition:color .3s}
+.back-link:hover{color:var(--warm)}
+.logo{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:#fff;text-decoration:none;text-shadow:0 0 20px rgba(255,255,255,0.3)}
+
+.article-section{max-width:760px;margin:0 auto;padding:8rem 3rem 5rem}
+.article-glass{background:rgba(6,6,22,0.5);backdrop-filter:blur(44px);-webkit-backdrop-filter:blur(44px);border:1px solid rgba(255,255,255,0.1);border-top:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:3rem;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 0 rgba(255,255,255,0.06) inset,0 4px 24px rgba(0,0,0,0.3),0 0 40px rgba(160,180,255,0.06)}
+.article-glass::after{content:'';position:absolute;top:-50%;left:-50%;right:-50%;bottom:-50%;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,0.1) 0%,rgba(255,255,255,0.04) 20%,transparent 45%),radial-gradient(ellipse at 75% 85%,rgba(200,180,255,0.07) 0%,transparent 40%);pointer-events:none}
+
+.article-date{font-size:0.72rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--warm-dim);margin-bottom:0.5rem}
+.article-glass h1{font-family:var(--font-display);font-size:2.4rem;font-weight:600;line-height:1.25;letter-spacing:-0.015em;margin-bottom:1rem}
+.article-tags{display:flex;gap:0.5rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.article-tags .tag{font-size:0.62rem;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted)}
+.article-body{color:var(--text-dim);font-size:1rem;line-height:2.1}
+.article-body p{margin-bottom:1.5rem}
+.article-body h3{font-family:var(--font-display);font-size:1.4rem;font-weight:600;color:var(--text);margin:2.5rem 0 1rem;letter-spacing:-0.01em}
+.article-body code{background:rgba(255,255,255,0.06);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.9em;color:var(--cool)}
+.article-body pre{background:rgba(0,0,0,0.3);padding:1.2rem 1.5rem;border-radius:8px;overflow-x:auto;margin:1.5rem 0;font-size:0.85rem;line-height:1.7;border:1px solid rgba(255,255,255,0.06)}
+
+/* Music player */
+.music-player{position:fixed;bottom:2rem;right:2rem;z-index:200;display:flex;align-items:center;gap:0.75rem}
+.music-btn{width:48px;height:48px;border-radius:50%;background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;color:var(--text);font-size:1.1rem;box-shadow:0 4px 20px rgba(0,0,0,0.35);flex-shrink:0;position:relative}
+.music-btn:hover{border-color:rgba(255,255,255,0.18)}
+.music-btn.playing{border-color:var(--warm-dim);box-shadow:0 0 20px rgba(212,165,116,0.15)}
+.music-btn.playing .vinyl-icon{animation:vinylSpin 3s linear infinite}
+@keyframes vinylSpin{to{transform:rotate(360deg)}}
+.music-info{background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem 1rem;font-size:0.72rem;color:var(--text-dim);white-space:nowrap;opacity:0;transform:translateX(10px);transition:all .4s;pointer-events:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.music-player:hover .music-info,.music-player.visible .music-info{opacity:1;transform:translateX(0)}
+.music-pulse{position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--warm-dim);opacity:0;animation:pulseRing 2s ease-out infinite;pointer-events:none}
+.music-btn.playing .music-pulse{opacity:1}
+@keyframes pulseRing{0%{transform:scale(1);opacity:0.5}100%{transform:scale(1.6);opacity:0}}
+
+@media(max-width:768px){
+  nav{padding:1.25rem 1.5rem}
+  .article-section{padding:6rem 1.5rem 3rem}
+  .article-glass{padding:1.75rem}
+  .article-glass h1{font-size:1.6rem}
+  .music-player{bottom:1.25rem;right:1.25rem}
+  .music-btn{width:40px;height:40px;font-size:0.95rem}
+  .music-info{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+  <nav>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <a href="index.html" class="logo">Leo</a>
+  </nav>
+  <article class="article-section">
+    <div class="article-glass">
+      <div class="article-date">2026.03.12</div>
+      <h1>从零读懂 Asar 打包格式</h1>
+      <div class="article-tags"><span class="tag">Reverse Engineering</span><span class="tag">Electron</span></div>
+      <div class="article-body">
+
+<p>Electron 应用用 <code>.asar</code> 文件打包资源这件事，几乎每个用过 Electron 的人都知道。但当我需要手动解析一个损坏的 asar 文件时，我发现自己对它的内部格式一无所知——只知道它是一个"类似 tar 的归档格式"。这篇文章记录了我从二进制层面拆解 Asar 格式的过程，以及为什么理解底层格式对日常开发也有帮助。</p>
+
+<h3>Asar 格式概览</h3>
+
+<p>Asar 不是压缩格式，<strong>它只是一个归档格式</strong>。这一点很重要——很多人以为 asar 像 zip 一样压缩了文件，但它实际上只是把所有文件拼接在一起，前面加了一个序列化的元数据头。这意味着 asar 内的文件可以随机访问，不需要先解压整个包。</p>
+
+<p>整个 asar 文件由三部分组成：</p>
+
+<ol style="margin:0 0 1.5rem 1.5rem;color:var(--text-dim);line-height:2.1;">
+<li><strong>Header Size</strong>——一个 4 字节的无符号整数（小端序），表示后面序列化元数据的字节长度</li>
+<li><strong>Header JSON</strong>——一个 Pickle 风格的 JSON 对象，描述虚拟文件系统树和每个文件在归档中的偏移量与大小</li>
+<li><strong>File Contents</strong>——所有文件的内容按顺序拼接到一起。偏移量 0 指的是文件内容区域的起始位置</li>
+</ol>
+
+<pre>+------------------+-------------------+------------------------+
+| Header Size (4B) | Header JSON (变长)  | File Contents (变长)    |
+| uint32 LE        | UTF-8 JSON string  | raw bytes               |
++------------------+-------------------+------------------------+</pre>
+
+<h3>手动解析 Header</h3>
+
+<p>理解 asar 最好的方式就是自己写一个解析器。Header 的读取流程很简单——读前 4 个字节拿到 JSON 长度，然后读对应长度的字符串：</p>
+
+<pre>import struct, json
+
+def read_asar_header(filepath):
+    with open(filepath, 'rb') as f:
+        # 1. 读取 header size (4 bytes, little-endian uint32)
+        size_bytes = f.read(4)
+        header_size = struct.unpack('<I', size_bytes)[0]
+
+        # 2. 读取 header JSON
+        header_json = f.read(header_size).decode('utf-8')
+
+        # 3. 解析
+        header = json.loads(header_json)
+        return header, 4 + header_size  # 文件内容起始偏移
+
+header, content_offset = read_asar_header('app.asar')
+print(json.dumps(header, indent=2)[:500])</pre>
+
+<p>解析出来的 Header JSON 结构是这样的：</p>
+
+<pre>{
+  "files": {
+    "package.json": {
+      "offset": "0",
+      "size": 1234,
+      "executable": false
+    },
+    "src": {
+      "files": {
+        "main.js": { "offset": "1234", "size": 5678 },
+        "renderer.js": { "offset": "6912", "size": 3456 }
+      }
+    }
+  }
+}</pre>
+
+<p>注意两个细节：<strong>offset 字段在 JSON 中是字符串而非数字</strong>——这是 asar 规范的一个历史遗留，需要手动转成 int。另外，文件夹节点用嵌套的 <code>"files"</code> 键表示，形成了一个虚拟的文件系统树，这个结构可以直接还原为磁盘目录。</p>
+
+<h3>提取文件：从偏移量到磁盘</h3>
+
+<p>有了 header 中的 offset 和 size，提取单个文件就很简单了。关键是把 header JSON 中的偏移量加上内容区域的起始偏移（4 + header_size），然后直接 seek 过去读：</p>
+
+<pre>def extract_file(asar_path, target_path, output_path):
+    header, content_offset = read_asar_header(asar_path)
+
+    # 在 header 的 files 树中查找目标文件
+    node = header['files']
+    for part in target_path.split('/'):
+        node = node[part] if part else node
+        if 'files' in node:
+            node = node['files']
+
+    offset = int(node['offset'])  # string -> int
+    size = node['size']
+
+    with open(asar_path, 'rb') as f:
+        f.seek(content_offset + offset)
+        data = f.read(size)
+
+    with open(output_path, 'wb') as out:
+        out.write(data)</pre>
+
+<p>如果需要提取整个归档，只需要递归遍历 <code>files</code> 树，对每个文件节点调用类似的读取逻辑即可。30 行 Python 代码就足够实现一个最小化的 asar 解包工具——不需要 <code>@electron/asar</code> 也不需要 <code>asar</code> npm 包。</p>
+
+<h3>为什么理解底层格式很重要</h3>
+
+<p>你可能会说——我直接用 <code>npx asar extract app.asar ./output</code> 就行了，为什么要自己解析？在 95% 的情况下确实不需要。但剩下 5% 的情况，理解底层格式可以救你一命：</p>
+
+<p><strong>损坏的 asar 文件恢复</strong>——如果 Header Size 字段损坏了（比如 app.asar 下载不完整），官方的 asar 工具会直接报错拒绝解包。但如果你知道 header 的结构，可以手动猜测 header JSON 的大小，或者暴力搜索 JSON 的结束标志 <code>}</code>，然后跳过损坏的 header 直接读取文件内容区。</p>
+
+<p><strong>增量更新和差分分析</strong>——Electron 应用更新时，如果只想替换一个 JS 文件，不需要重新解包和打包整个 asar。理解了 offset 机制后，你可以直接修改目标文件的 offset 指向新内容。这在做应用热修复或 A/B 测试分发时非常有用。</p>
+
+<p><strong>逆向工程与安全审计</strong>——很多 Electron 应用把关键逻辑放在 asar 里，包括 API 密钥、加密逻辑、甚至硬编码的凭证。如果你在做安全审计（或仅仅是确认一个应用是否在你的机器上做了不该做的事），直接解包 asar 是最快的路径。</p>
+
+<p>最后，自己动手解析一个二进制格式，是一种很踏实的理解方式。Asar 的格式足够简单——只有一个 4 字节头和一段 JSON——让你可以在一个小时内从零实现完整的读写能力。这种 "从 raw bytes 到结构化数据" 的体验，是单纯调用库函数无法替代的。如果你对二进制格式有兴趣，Asar 是一个极佳的入门练习。</p>
+
+      </div>
+    </div>
+  </article>
+
+  <div class="music-player" id="musicPlayer">
+    <button class="music-btn" id="musicBtn"><span class="vinyl-icon">&#9835;</span><span class="music-pulse"></span></button>
+    <span class="music-info" id="musicInfo">上海乐团管弦乐团与合唱团歌</span>
+  </div>
+  <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+</main>
+<script src="shared.js"></script>
+</body>
+</html>

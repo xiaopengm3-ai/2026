@@ -1,0 +1,18 @@
+﻿{
+  "manifest_version": 3,
+  "name": "Unretweet All",
+  "version": "1.0",
+  "description": "一键取消当前账号所有转推",
+  "permissions": ["storage", "tabs", "activeTab", "scripting"],
+  "host_permissions": ["https://twitter.com/*", "https://x.com/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{
+    "matches": ["*://*.twitter.com/*", "*://*.x.com/*"],
+    "js": ["content.js"]
+  }],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icon16.png", "32": "icon32.png", "48": "icon48.png", "128": "icon128.png" }
+  },
+  "icons": { "16": "icon16.png", "32": "icon32.png", "48": "icon48.png", "128": "icon128.png" }
+}

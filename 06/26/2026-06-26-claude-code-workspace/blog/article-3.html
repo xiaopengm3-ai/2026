@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 自动化工作流搭建笔记 — Leo's Log</title>
+<style>
+:root {
+  --bg: #06060f; --text: #e8e8ec; --text-dim: #909096; --text-muted: #5a5a64;
+  --warm: #d4a574; --warm-dim: #b8895e; --cool: #8ab4d8;
+  --font-display: 'Palatino Linotype', Georgia, 'STZhongsong', '华文中宋', 'SimSun', serif;
+  --font-body: system-ui, 'Segoe UI', 'Microsoft YaHei', '微软雅黑', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;line-height:1.75;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0}
+main{position:relative;z-index:1;pointer-events:auto}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:1.5rem 3rem}
+.back-link{color:rgba(255,255,255,0.6);text-decoration:none;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;transition:color .3s}
+.back-link:hover{color:var(--warm)}
+.logo{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:#fff;text-decoration:none;text-shadow:0 0 20px rgba(255,255,255,0.3)}
+
+.article-section{max-width:760px;margin:0 auto;padding:8rem 3rem 5rem}
+.article-glass{background:rgba(6,6,22,0.5);backdrop-filter:blur(44px);-webkit-backdrop-filter:blur(44px);border:1px solid rgba(255,255,255,0.1);border-top:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:3rem;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 0 rgba(255,255,255,0.06) inset,0 4px 24px rgba(0,0,0,0.3),0 0 40px rgba(160,180,255,0.06)}
+.article-glass::after{content:'';position:absolute;top:-50%;left:-50%;right:-50%;bottom:-50%;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,0.1) 0%,rgba(255,255,255,0.04) 20%,transparent 45%),radial-gradient(ellipse at 75% 85%,rgba(200,180,255,0.07) 0%,transparent 40%);pointer-events:none}
+
+.article-date{font-size:0.72rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--warm-dim);margin-bottom:0.5rem}
+.article-glass h1{font-family:var(--font-display);font-size:2.4rem;font-weight:600;line-height:1.25;letter-spacing:-0.015em;margin-bottom:1rem}
+.article-tags{display:flex;gap:0.5rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.article-tags .tag{font-size:0.62rem;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted)}
+.article-body{color:var(--text-dim);font-size:1rem;line-height:2.1}
+.article-body p{margin-bottom:1.5rem}
+.article-body h3{font-family:var(--font-display);font-size:1.4rem;font-weight:600;color:var(--text);margin:2.5rem 0 1rem;letter-spacing:-0.01em}
+.article-body code{background:rgba(255,255,255,0.06);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.9em;color:var(--cool)}
+.article-body pre{background:rgba(0,0,0,0.3);padding:1.2rem 1.5rem;border-radius:8px;overflow-x:auto;margin:1.5rem 0;font-size:0.85rem;line-height:1.7;border:1px solid rgba(255,255,255,0.06)}
+
+/* Music player */
+.music-player{position:fixed;bottom:2rem;right:2rem;z-index:200;display:flex;align-items:center;gap:0.75rem}
+.music-btn{width:48px;height:48px;border-radius:50%;background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;color:var(--text);font-size:1.1rem;box-shadow:0 4px 20px rgba(0,0,0,0.35);flex-shrink:0;position:relative}
+.music-btn:hover{border-color:rgba(255,255,255,0.18)}
+.music-btn.playing{border-color:var(--warm-dim);box-shadow:0 0 20px rgba(212,165,116,0.15)}
+.music-btn.playing .vinyl-icon{animation:vinylSpin 3s linear infinite}
+@keyframes vinylSpin{to{transform:rotate(360deg)}}
+.music-info{background:rgba(4,4,16,0.55);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem 1rem;font-size:0.72rem;color:var(--text-dim);white-space:nowrap;opacity:0;transform:translateX(10px);transition:all .4s;pointer-events:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.music-player:hover .music-info,.music-player.visible .music-info{opacity:1;transform:translateX(0)}
+.music-pulse{position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--warm-dim);opacity:0;animation:pulseRing 2s ease-out infinite;pointer-events:none}
+.music-btn.playing .music-pulse{opacity:1}
+@keyframes pulseRing{0%{transform:scale(1);opacity:0.5}100%{transform:scale(1.6);opacity:0}}
+
+@media(max-width:768px){
+  nav{padding:1.25rem 1.5rem}
+  .article-section{padding:6rem 1.5rem 3rem}
+  .article-glass{padding:1.75rem}
+  .article-glass h1{font-size:1.6rem}
+  .music-player{bottom:1.25rem;right:1.25rem}
+  .music-btn{width:40px;height:40px;font-size:0.95rem}
+  .music-info{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+  <nav>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <a href="index.html" class="logo">Leo</a>
+  </nav>
+  <article class="article-section">
+    <div class="article-glass">
+      <div class="article-date">2026.04.22</div>
+      <h1>Claude Code 自动化工作流搭建笔记</h1>
+      <div class="article-tags"><span class="tag">AI</span><span class="tag">Automation</span><span class="tag">DevOps</span></div>
+      <div class="article-body">
+
+<p>2026 年春天，我开始尝试将 Claude Code 融入日常工作流。动机很朴素——每天早上的新闻简报、每次 push 前的代码审查、以及周末的自动部署，这些重复劳动如果能让 AI 代劳，省下来的时间可以去做更有创造力的事情。一个月下来，我把三条主要管线跑通了，记录一下心得。</p>
+
+<h3>每日新闻推送管线</h3>
+
+<p>最早跑通的是新闻简报。每天早上 8 点，GitHub Actions 触发一个 Python 脚本，从 40+ 个信息源拉取当日科技新闻，去重排序后送给 Claude，由它生成一段 200 字左右的摘要。整个过程从触发到飞书卡片推送到手机，大约 3 分钟。</p>
+
+<p>关键配置其实很简单——在 <code>.github/workflows</code> 下新建一个 workflow 文件即可：</p>
+
+<pre>name: Daily News Digest
+on:
+  schedule:
+    - cron: '0 0 * * *'   # UTC 00:00 = 北京时间 08:00
+  workflow_dispatch:       # 支持手动触发
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements.txt
+      - run: python scripts/news_daily.py
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}</pre>
+
+<p>有几个踩坑值得分享。第一，<strong>cron 时区陷阱</strong>——GitHub Actions 的 schedule 使用 UTC，所以北京时间 8 点要写成 <code>0 0 * * *</code>。第二，<strong>飞书 Webhook 的签名校验</strong>不是必选项，但如果你开启了，需要额外计算一个 HMAC-SHA256 签名追加到请求头里，否则消息会被静默丢弃，没有任何报错提示。第三，workflow 长时间不运行的仓库会被 GitHub 自动停用 schedule——需要每 60 天内至少有一次提交才能保持活跃。</p>
+
+<h3>代码审查自动化</h3>
+
+<p>这部分的灵感来自于一次 code review 马拉松。团队规模小，没有专门的 reviewers，每个人写完 PR 后经常要等半天才有人看。于是我试着让 Claude Code 做第一轮 review。</p>
+
+<p>具体做法是：在 <code>.github/workflows</code> 下配置一个 PR trigger，当有人提交 PR 时自动运行 review。Claude 关注三类问题：</p>
+
+<p><strong>类型安全</strong>——Python 项目虽然没有编译期检查，但 Claude 能识别出潜在的类型不匹配。比如某个函数签名改了参数名但调用方没跟着改，这种问题人工 review 很容易遗漏。</p>
+
+<p><strong>复杂度红线</strong>——如果某个函数的圈复杂度超过了 10，或者一个 PR 改动了超过 500 行却没有拆分 commit，Claude 会在 review 中标注出来。这个规则很简单但效果出奇好。</p>
+
+<p><strong>安全陷阱</strong>——硬编码的密钥、未过滤的 SQL 拼接、debug 模式下的错误信息泄露。这些东西 Claude 非常敏感，几乎没有漏报。</p>
+
+<p>不过需要明确的是，Claude 的 review 是<strong>辅助性的</strong>——我们仍然要求至少有一个人类 reviewer 批准才能合并。AI review 的作用是让人类 reviewer 的注意力更集中，不必在低级问题上浪费时间。</p>
+
+<h3>部署管线：GitHub Actions 到服务器</h3>
+
+<p>部署管线比前两条复杂一些，因为它涉及到 SSH 到远端服务器。我花了不少时间在安全配置上，最后的方案是这样：</p>
+
+<pre>name: Deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+      - run: pytest tests/
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: deployer
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/app
+            git pull origin main
+            docker compose up -d --build
+            docker compose exec app python manage.py migrate</pre>
+
+<p>安全方面的几个要点：绝不要用密码登录——Ed25519 密钥对是当前最佳选择。为 CI 创建一个独立的服务器用户，权限严格控制到仅能执行部署操作。SSH 私钥存放在 GitHub Secrets 中，永远不要以任何形式出现在日志或配置文件中。</p>
+
+<p>我还加了一个健康检查步骤——部署完成后 curl 一下生产环境的 <code>/health</code> 端点，如果 5 次重试后仍然返回非 200 状态码，则自动回滚到上一次的 Docker 镜像。这个自动回滚救过我两次。</p>
+
+<h3>经验与反思</h3>
+
+<p>一个月下来最大的感受是：AI 自动化真正的瓶颈<strong>不在模型能力，而在工程整合</strong>。Claude 本身很强大，但重要的是如何把它嵌到日常的 workflow 中，让它在你需要的时候自动出现，而不是需要你专门打开一个 Chat 窗口去问它问题。</p>
+
+<p>另外一个小建议——给每一条自动化管线加一个 <code>workflow_dispatch</code> 触发器。不管你的 schedule 配得多完美，总有需要手动触发一次的情况。不加这个选项，到时候就得去 dev 分支上推送一个无关的空 commit 来触发 workflow，非常狼狈。</p>
+
+<p>目前三条管线跑了一个月，稳定性不错。接下来打算加一条代码质量趋势追踪——每周自动跑一次 <code>radon</code> 和 <code>pylint</code>，生成趋势图贴到飞书群。如果有意思的话再写一篇后续。</p>
+
+      </div>
+    </div>
+  </article>
+
+  <div class="music-player" id="musicPlayer">
+    <button class="music-btn" id="musicBtn"><span class="vinyl-icon">&#9835;</span><span class="music-pulse"></span></button>
+    <span class="music-info" id="musicInfo">上海乐团管弦乐团与合唱团歌</span>
+  </div>
+  <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+</main>
+<script src="shared.js"></script>
+</body>
+</html>

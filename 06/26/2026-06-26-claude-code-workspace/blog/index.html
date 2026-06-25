@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leo's Log</title>
+<style>
+:root {
+  --bg: #06060f;
+  --text: #e8e8ec;
+  --text-dim: #909096;
+  --text-muted: #5a5a64;
+  --warm: #d4a574;
+  --warm-dim: #b8895e;
+  --cool: #8ab4d8;
+  --cool-dim: #6a94b8;
+  --font-display: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, 'STZhongsong', '华文中宋', 'SimSun', '宋体', serif;
+  --font-body: system-ui, 'Segoe UI', 'Microsoft YaHei', '微软雅黑', 'PingFang SC', '苹方', sans-serif;
+  --font-serif: 'Palatino Linotype', Palatino, Georgia, 'STZhongsong', '华文中宋', 'SimSun', serif;
+  --transition: 0.3s ease;
+  --glass-bg: rgba(4,4,16,0.55);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-border-hover: rgba(255,255,255,0.18);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 300;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  filter: url(#noise);
+  opacity: 0.028;
+  mix-blend-mode: overlay;
+}
+
+/* ── Snap wrapper ── */
+.snap-wrapper {
+  height: 100vh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+.snap-wrapper::-webkit-scrollbar { display: none; }
+
+.page {
+  scroll-snap-align: start;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+#stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+main { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+nav, .dot-nav, .music-player { pointer-events: auto; }
+.snap-wrapper { pointer-events: auto; }
+
+/* ── Nav ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.5rem 3rem;
+}
+.logo {
+  font-family: var(--font-display);
+  font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em;
+  color: #fff; text-decoration: none;
+  text-shadow: 0 0 20px rgba(255,255,255,0.3);
+}
+.nav-links { display: flex; gap: 2.5rem; list-style: none; }
+.nav-links a {
+  color: rgba(255,255,255,0.6); text-decoration: none;
+  font-size: 0.8rem; font-weight: 400; letter-spacing: 0.1em;
+  text-transform: uppercase; transition: color var(--transition);
+}
+.nav-links a:hover { color: var(--warm); }
+
+/* ── Hero ── */
+.hero {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 3rem; height: 100%;
+}
+.hero-eyebrow {
+  font-family: var(--font-serif);
+  font-size: 0.78rem; font-weight: 400; letter-spacing: 0.08em;
+  text-transform: none; color: var(--warm); margin-bottom: 1.5rem;
+  font-style: italic;
+}
+
+/* Title row: Saturn + headline */
+.hero-title-row {
+  display: flex; align-items: flex-start; gap: 2.5rem;
+}
+
+/* ── Saturn ── */
+.saturn-wrap {
+  flex-shrink: 0;
+  width: 100px; height: 100px;
+  position: relative;
+  animation: saturnWobble 40s ease-in-out infinite;
+  margin-top: 0.2rem;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 0 18px rgba(212,165,116,0.2)) drop-shadow(0 0 40px rgba(200,160,120,0.08));
+}
+@keyframes saturnWobble {
+  0%, 100% { transform: rotateY(0deg) rotateX(0deg); }
+  25% { transform: rotateY(8deg) rotateX(3deg); }
+  50% { transform: rotateY(0deg) rotateX(6deg); }
+  75% { transform: rotateY(-8deg) rotateX(3deg); }
+}
+
+/* Ring rear (behind planet) — rendered via the planet's pseudo-element trick */
+.saturn-ring {
+  position: absolute;
+  width: 130px; height: 130px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotateX(72deg) rotateZ(0deg);
+  border-radius: 50%;
+  border: 4px solid rgba(200,170,130,0.55);
+  box-shadow:
+    0 0 0 3px rgba(180,150,110,0.35),
+    0 0 0 7px rgba(190,160,120,0.25),
+    0 0 0 11px rgba(170,140,100,0.15),
+    0 0 0 14px rgba(160,130,90,0.08);
+}
+
+/* Planet body */
+.saturn-body {
+  position: absolute;
+  width: 56px; height: 56px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 2;
+  background: radial-gradient(circle at 38% 32%,
+    #faf3e6 0%, #e8d5b8 15%, #d4b896 35%, #c4a07a 55%, #a08060 80%, #705840 100%);
+  box-shadow: inset 0 -4px 8px rgba(0,0,0,0.25);
+}
+/* Surface band */
+.saturn-body::before {
+  content: '';
+  position: absolute;
+  width: 100%; height: 5px;
+  top: 38%;
+  background: rgba(180,150,120,0.35);
+  border-radius: 2px;
+  box-shadow:
+    0 8px 0 rgba(180,150,120,0.2),
+    0 -8px 0 rgba(200,170,140,0.25);
+}
+
+/* Ring front half — clips to bottom */
+.saturn-front {
+  position: absolute;
+  width: 130px; height: 130px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotateX(72deg) rotateZ(0deg);
+  border-radius: 50%;
+  border: 4px solid rgba(200,170,130,0.55);
+  box-shadow:
+    0 0 0 3px rgba(180,150,110,0.35),
+    0 0 0 7px rgba(190,160,120,0.25),
+    0 0 0 11px rgba(170,140,100,0.15),
+    0 0 0 14px rgba(160,130,90,0.08);
+  clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+  z-index: 3;
+}
+
+/* ── Title typography ── */
+.hero h1 {
+  font-family: Impact, 'Arial Black', 'Helvetica Neue', sans-serif;
+  font-size: clamp(3.5rem, 8vw, 7.5rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  max-width: 9em;
+  text-transform: uppercase;
+  background: linear-gradient(
+    125deg,
+    #f5d78a 0%, #e8b87a 25%, #d4956c 50%, #c87068 75%, #d4956c 100%
+  );
+  background-size: 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(212,165,116,0.5));
+}
+
+.hero-sub {
+  margin-top: 2rem;
+  color: var(--text-dim);
+  font-family: var(--font-serif);
+  font-size: 1.05rem; font-weight: 300;
+  max-width: 520px; line-height: 1.8;
+  font-style: italic;
+}
+/* ── Section ── */
+.section { max-width: 1100px; margin: 0 auto; padding: 4rem 3rem; }
+.section-label {
+  font-family: var(--font-serif);
+  font-size: 0.78rem; font-weight: 400; letter-spacing: 0.08em;
+  text-transform: none; color: var(--warm); margin-bottom: 2rem;
+  font-style: italic;
+}
+
+/* ── Posts grid ── */
+.posts-grid-3d {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  perspective: 1200px;
+}
+
+/* ── Liquid Glass Card ── */
+.glass-card {
+  background: rgba(6,6,22,0.5);
+  backdrop-filter: blur(44px);
+  -webkit-backdrop-filter: blur(44px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  padding: 2rem 2.2rem;
+  display: block; text-decoration: none; color: inherit;
+  position: relative; overflow: hidden;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.03) inset,
+    0 1px 0 0 rgba(255,255,255,0.06) inset,
+    0 4px 24px rgba(0,0,0,0.3),
+    0 0 40px rgba(160,180,255,0.06);
+}
+
+/* Liquid surface highlight — thick wet gleam */
+.glass-card::after {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; right: -50%; bottom: -50%;
+  background: radial-gradient(
+    ellipse at 30% 20%,
+    rgba(255,255,255,0.1) 0%,
+    rgba(255,255,255,0.04) 20%,
+    transparent 45%
+  ),
+  radial-gradient(
+    ellipse at 75% 85%,
+    rgba(200,180,255,0.07) 0%,
+    transparent 40%
+  );
+  pointer-events: none;
+}
+
+.card-date {
+  font-family: var(--font-serif);
+  font-size: 0.72rem; font-weight: 400; letter-spacing: 0.06em;
+  text-transform: none; color: var(--warm-dim);
+  margin-bottom: 0.4rem;
+  font-style: italic;
+}
+.glass-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.55rem; font-weight: 600; line-height: 1.3;
+  letter-spacing: -0.01em; margin-bottom: 0.4rem;
+}
+.glass-card p {
+  font-size: 0.92rem; color: var(--text-dim);
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-tags { display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; }
+.tag {
+  font-size: 0.62rem; font-weight: 500; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+
+/* ── About ── */
+.about-section { max-width: 700px; margin: 0 auto; padding: 4rem 3rem; }
+.about-glass {
+  background: rgba(6,6,22,0.25);
+  backdrop-filter: blur(44px);
+  -webkit-backdrop-filter: blur(44px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px; padding: 2.5rem;
+  position: relative; overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.01) inset,
+    0 4px 24px rgba(0,0,0,0.2);
+}
+.about-glass::after {
+  content: '';
+  position: absolute; top: -50%; left: -50%; right: -50%; bottom: -50%;
+  background: radial-gradient(
+    ellipse at 35% 25%,
+    rgba(255,255,255,0.03) 0%,
+    rgba(255,255,255,0.01) 25%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+.about-glass h2 {
+  font-family: var(--font-serif);
+  font-size: 1.8rem; font-weight: 400;
+  letter-spacing: -0.01em; line-height: 1.25; margin-bottom: 1rem;
+  font-style: italic;
+}
+.about-glass p {
+  font-family: var(--font-serif);
+  color: var(--text-dim); font-size: 0.9rem; line-height: 1.9;
+}
+
+/* ── Footer ── */
+footer { padding: 4rem 3rem 3rem; text-align: center; }
+.social-links {
+  display: flex; justify-content: center; gap: 2rem;
+  margin-bottom: 1.5rem; list-style: none;
+}
+.social-links a {
+  color: var(--text-dim); text-decoration: none;
+  font-size: 0.8rem; letter-spacing: 0.06em;
+  transition: color var(--transition);
+}
+.social-links a:hover { color: var(--warm); }
+footer p {
+  color: var(--text-muted); font-size: 0.7rem; letter-spacing: 0.06em;
+}
+
+/* ── Reveal ── */
+.reveal {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ── Dot Nav ── */
+.dot-nav {
+  position: fixed;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.dot-nav button {
+  width: 2px; height: 14px;
+  border-radius: 1px;
+  border: none;
+  background: rgba(255,255,255,0.18);
+  cursor: pointer;
+  transition: all 0.4s ease;
+  padding: 0;
+  outline: none;
+}
+.dot-nav button.active {
+  background: var(--warm);
+  height: 28px;
+  box-shadow: 0 0 12px rgba(212,165,116,0.5);
+}
+.dot-nav button:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+/* ── Page transition ── */
+.page .page-content {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.page.active .page-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Stagger children inside page */
+.page.active .glass-card:nth-child(1) { transition-delay: 0.1s; }
+.page.active .glass-card:nth-child(2) { transition-delay: 0.15s; }
+.page.active .glass-card:nth-child(3) { transition-delay: 0.2s; }
+.page.active .glass-card:nth-child(4) { transition-delay: 0.25s; }
+.page.active .glass-card:nth-child(5) { transition-delay: 0.3s; }
+.page.active .glass-card:nth-child(6) { transition-delay: 0.35s; }
+
+@media (max-width: 768px) {
+  .dot-nav { right: 0.75rem; gap: 1rem; }
+  .dot-nav button { width: 2px; height: 10px; }
+}
+
+/* ── Music Player ── */
+.music-player {
+  position: fixed;
+  bottom: 2rem; right: 2rem;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.music-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  color: var(--text);
+  font-size: 1.1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  flex-shrink: 0;
+}
+.music-btn:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.music-btn.playing {
+  border-color: var(--warm-dim);
+  box-shadow: 0 0 20px rgba(212,165,116,0.15);
+}
+/* Spinning vinyl icon */
+.music-btn.playing .vinyl-icon {
+  animation: vinylSpin 3s linear infinite;
+}
+@keyframes vinylSpin {
+  to { transform: rotate(360deg); }
+}
+.music-info {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all 0.4s ease;
+  pointer-events: none;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.music-player:hover .music-info,
+.music-player.visible .music-info {
+  opacity: 1;
+  transform: translateX(0);
+}
+.music-pulse {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--warm-dim);
+  opacity: 0;
+  animation: pulseRing 2s ease-out infinite;
+  pointer-events: none;
+}
+.music-btn.playing .music-pulse {
+  opacity: 1;
+}
+@keyframes pulseRing {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@media (max-width: 768px) {
+  .music-player { bottom: 1.25rem; right: 1.25rem; }
+  .music-btn { width: 40px; height: 40px; font-size: 0.95rem; }
+  .music-info { display: none; }
+}
+@media (max-width: 768px) {
+  nav { padding: 1.25rem 1.5rem; }
+  .nav-links { display: none; }
+  .hero { padding: 0 1.5rem; }
+  .hero-title-row { flex-direction: column; gap: 1.5rem; }
+  .saturn-wrap { width: 70px; height: 70px; }
+  .saturn-ring { width: 90px; height: 90px; border-width: 3px; }
+  .saturn-front { width: 90px; height: 90px; border-width: 3px; }
+  .saturn-body { width: 40px; height: 40px; }
+  .hero h1 { font-size: clamp(2.2rem, 8vw, 3.5rem); }
+  .section { padding: 2rem 1.5rem; }
+  .posts-grid-3d { grid-template-columns: 1fr; gap: 1rem; }
+  .glass-card { padding: 1.25rem; }
+  .glass-card h2 { font-size: 1.2rem; }
+  .about-section { padding: 2rem 1.5rem; }
+  .about-glass { padding: 1.5rem; }
+  footer { padding: 2rem 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+  <filter id="noise">
+    <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+</svg>
+<div class="noise-overlay"></div>
+
+<canvas id="stars"></canvas>
+
+<main>
+  <nav>
+    <a href="#" class="logo">Leo</a>
+    <ul class="nav-links">
+      <li><a href="#" data-goto="1">Articles</a></li>
+      <li><a href="#" data-goto="2">About</a></li>
+    </ul>
+  </nav>
+
+  <div class="dot-nav" id="dotNav">
+    <button data-page="0" class="active"></button>
+    <button data-page="1"></button>
+    <button data-page="2"></button>
+  </div>
+
+  <div class="snap-wrapper" id="snapWrap">
+
+    <!-- Page 1: Hero -->
+    <section class="page active" data-page="0">
+      <div class="page-content">
+        <header class="hero">
+          <div class="hero-eyebrow">Personal Blog</div>
+          <div class="hero-title-row">
+            <div class="saturn-wrap">
+              <div class="saturn-ring"></div>
+              <div class="saturn-body"></div>
+              <div class="saturn-front"></div>
+            </div>
+            <h1>Thinking<br>deeply,<br>shipping<br>slowly.</h1>
+          </div>
+          <p class="hero-sub">
+            写出更好的代码，做出更好的产品。这里记录我对软件开发、系统设计和独立开发的一些思考。
+          </p>
+        </header>
+      </div>
+    </section>
+
+    <!-- Page 2: Articles -->
+    <section class="page" data-page="1">
+      <div class="page-content">
+        <div class="section" id="posts">
+          <div class="section-label">Articles</div>
+          <div class="posts-grid-3d">
+
+    <a href="article-1.html" class="glass-card tilt-card">
+      <div class="card-date">2026.05.20</div>
+      <h2>构建一个新闻聚合器：从 RSS 到分布式爬虫</h2>
+      <p>从零开始构建一个覆盖 40+ 信息源的新闻聚合系统，涉及 RSS 解析、网页抓取、反爬对抗和内容去重。</p>
+      <div class="card-tags"><span class="tag">Python</span><span class="tag">Architecture</span><span class="tag">Crawler</span></div>
+    </a>
+
+    <a href="article-2.html" class="glass-card tilt-card">
+      <div class="card-date">2026.05.08</div>
+      <h2>为什么我选择 SQLite 作为独立开发的首选数据库</h2>
+      <p>PostgreSQL 很棒，但对大多数 side project 来说过度了。聊聊 SQLite 在独立开发场景下的优势。</p>
+      <div class="card-tags"><span class="tag">Database</span><span class="tag">SQLite</span><span class="tag">Side Project</span></div>
+    </a>
+
+    <a href="article-3.html" class="glass-card tilt-card">
+      <div class="card-date">2026.04.22</div>
+      <h2>Claude Code 自动化工作流搭建笔记</h2>
+      <p>用 Claude Code 搭建每日新闻推送、代码审查和自动部署流水线的实战记录。GitHub Actions + 飞书通知。</p>
+      <div class="card-tags"><span class="tag">AI</span><span class="tag">Automation</span><span class="tag">DevOps</span></div>
+    </a>
+
+    <a href="article-4.html" class="glass-card tilt-card">
+      <div class="card-date">2026.04.10</div>
+      <h2>Windows 上的开发环境：2026 版</h2>
+      <p>在 Windows 11 上搭建舒适的开发环境 — WSL2、Windows Terminal、包管理器选择，以及好用的工具推荐。</p>
+      <div class="card-tags"><span class="tag">Tooling</span><span class="tag">Windows</span><span class="tag">DevEnv</span></div>
+    </a>
+
+    <a href="article-5.html" class="glass-card tilt-card">
+      <div class="card-date">2026.03.28</div>
+      <h2>设计一个交易机器人的反思</h2>
+      <p>用 Python 写了一个 BTC RSI 策略回测和自动交易机器人。聊聊策略设计、回测陷阱和实盘中的心理博弈。</p>
+      <div class="card-tags"><span class="tag">Trading</span><span class="tag">Python</span><span class="tag">Finance</span></div>
+    </a>
+
+    <a href="article-6.html" class="glass-card tilt-card">
+      <div class="card-date">2026.03.12</div>
+      <h2>从零读懂 Asar 打包格式</h2>
+      <p>逆向分析 Electron 应用的 Asar 打包格式，手动解析文件头和索引结构。理解底层格式对排查打包问题很有帮助。</p>
+      <div class="card-tags"><span class="tag">Reverse Engineering</span><span class="tag">Electron</span></div>
+    </a>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page 3: About + Footer -->
+    <section class="page" data-page="2">
+      <div class="page-content">
+        <div class="about-section" id="about">
+          <div class="about-glass">
+            <h2>关于这个博客</h2>
+            <p>
+              我是 Leo，一名独立开发者。<br><br>
+              这里没有广告，没有付费墙，没有任何商业目的。仅仅是我在构建产品过程中的思考和记录。<br><br>
+              关注的话题：系统设计、开发工具、自动化、加密货币、AI 应用。<br><br>
+              如果你在这些领域有共同的兴趣，欢迎交流。
+            </p>
+          </div>
+        </div>
+        <footer id="contact">
+          <ul class="social-links">
+            <li><a href="https://github.com/xiaopengm3-ai">GitHub</a></li>
+            <li><a href="#">Twitter / X</a></li>
+            <li><a href="#">Email</a></li>
+            <li><a href="#">RSS</a></li>
+          </ul>
+          <p>&copy; 2026 Leo's Log &middot; Built with plain HTML & CSS</p>
+        </footer>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="music-player" id="musicPlayer">
+    <button class="music-btn" id="musicBtn"><span class="vinyl-icon">&#9835;</span><span class="music-pulse"></span></button>
+    <span class="music-info" id="musicInfo">上海乐团管弦乐团与合唱团歌</span>
+  </div>
+  <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+</main>
+
+<script>
+(function() {
+  var canvas = document.getElementById('stars');
+  var ctx = canvas.getContext('2d');
+  var w, h;
+  var particles = [];
+  var N = 400;
+  var mouse = { x: -9999, y: -9999 };
+  var time = 0;
+
+  function resize() {
+    w = canvas.width  = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Mouse / touch
+  window.addEventListener('mousemove', function(e) {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+  window.addEventListener('mouseleave', function() {
+    mouse.x = -9999;
+    mouse.y = -9999;
+  });
+  window.addEventListener('touchmove', function(e) {
+    mouse.x = e.touches[0].clientX;
+    mouse.y = e.touches[0].clientY;
+  }, { passive: true });
+  window.addEventListener('touchend', function() {
+    mouse.x = -9999;
+    mouse.y = -9999;
+  });
+
+  // Generate stars
+  for (var i = 0; i < N; i++) {
+    var typeRoll = Math.random();
+    var type, r, color, twinkleSpeed, twinkleAmp;
+    if (typeRoll < 0.05) {
+      type = 'bright';
+      r = 2 + Math.random() * 2.5;
+      color = Math.random() < 0.4 ? [255,235,210] : [210,225,255];
+      twinkleSpeed = 0.6 + Math.random() * 0.8;
+      twinkleAmp = 0.35 + Math.random() * 0.35;
+    } else if (typeRoll < 0.20) {
+      type = 'warm';
+      r = 0.8 + Math.random() * 1.5;
+      var shade = 160 + Math.random() * 95;
+      color = [shade + 40, shade - 30, shade - 80];
+      twinkleSpeed = 0.4 + Math.random() * 0.8;
+      twinkleAmp = 0.2 + Math.random() * 0.3;
+    } else {
+      type = 'normal';
+      r = 0.5 + Math.random() * 1.3;
+      color = [180 + Math.random() * 75, 195 + Math.random() * 60, 230 + Math.random() * 25];
+      twinkleSpeed = 0.3 + Math.random() * 0.7;
+      twinkleAmp = 0.12 + Math.random() * 0.3;
+    }
+    particles.push({
+      type: type, x: Math.random() * w, y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15,
+      r: r, baseR: r, color: color,
+      phase: Math.random() * Math.PI * 2,
+      twinkleSpeed: twinkleSpeed, twinkleAmp: twinkleAmp,
+      baseOpacity: 0.3 + Math.random() * 0.2
+    });
+    particles[i].baseX = particles[i].x;
+    particles[i].baseY = particles[i].y;
+  }
+
+  // White dwarf — large, centered, bright core
+  function drawWhiteDwarf(t) {
+    var cx = w * 0.5;
+    var cy = h * 0.45;
+    var baseRadius = Math.min(w, h) * 0.7;
+    var pulse = 1 + Math.sin(t * 0.0008) * 0.03;
+    var r = baseRadius * pulse;
+
+    // Faintest outer halo
+    var halo = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r * 1.4);
+    halo.addColorStop(0, 'rgba(160,190,230,0.04)');
+    halo.addColorStop(0.5, 'rgba(120,150,200,0.015)');
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 1.4, 0, Math.PI * 2); ctx.fill();
+
+    // Mid glow
+    var mid = ctx.createRadialGradient(cx, cy, r * 0.02, cx, cy, r * 0.55);
+    mid.addColorStop(0, 'rgba(220,235,255,0.12)');
+    mid.addColorStop(0.3, 'rgba(180,210,250,0.05)');
+    mid.addColorStop(0.7, 'rgba(100,140,200,0.01)');
+    mid.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = mid;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2); ctx.fill();
+
+    // Tight inner glow
+    var inner = ctx.createRadialGradient(cx, cy, r * 0.003, cx, cy, r * 0.15);
+    inner.addColorStop(0, 'rgba(255,255,255,0.45)');
+    inner.addColorStop(0.08, 'rgba(240,245,255,0.25)');
+    inner.addColorStop(0.3, 'rgba(200,225,255,0.08)');
+    inner.addColorStop(0.6, 'rgba(0,0,0,0)');
+    ctx.fillStyle = inner;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.15, 0, Math.PI * 2); ctx.fill();
+
+    // Ultra-bright pinpoint core
+    var core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.02);
+    core.addColorStop(0, 'rgba(255,255,255,0.7)');
+    core.addColorStop(0.4, 'rgba(255,255,255,0.2)');
+    core.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.02, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Nebulae
+  function drawNebulae(t) {
+    var patches = [
+      { x: 0.22, y: 0.32, r: 0.25, color: [212, 165, 116] },
+      { x: 0.74, y: 0.48, r: 0.22, color: [200, 140, 90] },
+      { x: 0.38, y: 0.60, r: 0.28, color: [220, 175, 130] },
+      { x: 0.62, y: 0.26, r: 0.18, color: [180, 130, 100] }
+    ];
+    for (var i = 0; i < patches.length; i++) {
+      var p = patches[i];
+      var px = w * p.x, py = h * p.y, pr = Math.min(w, h) * p.r;
+      var grad = ctx.createRadialGradient(px, py, 0, px, py, pr);
+      grad.addColorStop(0, 'rgba('+p.color[0]+','+p.color[1]+','+p.color[2]+',0.02)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawStars(t) {
+    for (var i = 0; i < N; i++) {
+      var p = particles[i];
+      var twinkle = Math.sin(t * 0.001 * p.twinkleSpeed + p.phase) * p.twinkleAmp;
+      var opacity = p.baseOpacity + twinkle;
+      if (opacity < 0.06) opacity = 0.06;
+      if (opacity > 1) opacity = 1;
+
+      // Mouse REPEL — particles pushed away from cursor
+      var dx = p.x - mouse.x;
+      var dy = p.y - mouse.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var range = 130;
+      var repelRange = 70;
+
+      if (dist < range && mouse.x > 0) {
+        if (dist < repelRange) {
+          // Strong repel inside inner zone
+          var force = (1 - dist / repelRange) * 0.08;
+          p.vx += (dx / (dist + 0.01)) * force;
+          p.vy += (dy / (dist + 0.01)) * force;
+          opacity = Math.max(0.06, opacity - 0.35);
+        } else {
+          // Gentle repel in outer zone
+          var f = (1 - (dist - repelRange) / (range - repelRange)) * 0.02;
+          p.vx += (dx / (dist + 0.01)) * f;
+          p.vy += (dy / (dist + 0.01)) * f;
+        }
+        p.r = p.baseR;
+      } else {
+        p.r += (p.baseR - p.r) * 0.08;
+      }
+
+      // Move
+      p.x += p.vx; p.y += p.vy;
+      p.vx *= 0.996; p.vy *= 0.996;
+
+      // Return to base
+      p.vx += (p.baseX - p.x) * 0.00008;
+      p.vy += (p.baseY - p.y) * 0.00008;
+
+      // Micro-drift
+      p.vx += (Math.random() - 0.5) * 0.005;
+      p.vy += (Math.random() - 0.5) * 0.005;
+
+      // Wrap
+      if (p.x < -10) p.x = w + 10;
+      if (p.x > w + 10) p.x = -10;
+      if (p.y < -10) p.y = h + 10;
+      if (p.y > h + 10) p.y = -10;
+
+      var c = p.color;
+      // Plastic bead: colored base circle
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba('+c[0]+','+c[1]+','+c[2]+','+opacity+')';
+      ctx.fill();
+      // Specular highlight — tiny bright dot offset top-left
+      var hlR = p.r * 0.35;
+      if (hlR < 0.3) hlR = 0.3;
+      var hlX = p.x - p.r * 0.2;
+      var hlY = p.y - p.r * 0.2;
+      ctx.beginPath();
+      ctx.arc(hlX, hlY, hlR, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + (opacity * 0.55) + ')';
+      ctx.fill();
+
+      if (p.type === 'bright' && opacity > 0.5) {
+        var fl = p.r * 5;
+        var fo = (opacity - 0.5) * 0.5;
+        ctx.strokeStyle = 'rgba('+c[0]+','+c[1]+','+c[2]+','+fo+')';
+        ctx.lineWidth = 0.4;
+        ctx.beginPath();
+        ctx.moveTo(p.x - fl, p.y); ctx.lineTo(p.x + fl, p.y);
+        ctx.moveTo(p.x, p.y - fl); ctx.lineTo(p.x, p.y + fl);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Connections only near mouse (sparse)
+  function drawConnections() {
+    if (mouse.x < 0) return;
+    for (var i = 0; i < N; i++) {
+      var a = particles[i];
+      var dA = Math.hypot(mouse.x - a.x, mouse.y - a.y);
+      if (dA > 100) continue;
+      for (var j = i + 1; j < N; j++) {
+        var b = particles[j];
+        var dB = Math.hypot(mouse.x - b.x, mouse.y - b.y);
+        if (dB > 100) continue;
+        var dx = a.x - b.x, dy = a.y - b.y;
+        var dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist > 60) continue;
+        var alpha = (1 - dist/60) * 0.1;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = 'rgba(200,200,230,'+alpha+')';
+        ctx.lineWidth = 0.3;
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawSky() {
+    var grad = ctx.createRadialGradient(w*0.5, h*0.45, 0, w*0.5, h*0.5, Math.max(w,h)*0.85);
+    grad.addColorStop(0, '#0d0d24');
+    grad.addColorStop(0.4, '#08081a');
+    grad.addColorStop(0.7, '#040410');
+    grad.addColorStop(1, '#020208');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  function draw(t) {
+    drawSky();
+    drawNebulae(t);
+    drawWhiteDwarf(t);
+    drawStars(t);
+    drawConnections();
+  }
+
+  function loop(ts) {
+    time = ts;
+    draw(ts);
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', function() {
+    resize();
+    for (var i = 0; i < N; i++) {
+      particles[i].baseX = particles[i].x = Math.random() * w;
+      particles[i].baseY = particles[i].y = Math.random() * h;
+    }
+  });
+
+  requestAnimationFrame(loop);
+
+  // ── Music Player ──
+  var bgm = document.getElementById('bgm');
+  var musicBtn = document.getElementById('musicBtn');
+  var musicPlayer = document.getElementById('musicPlayer');
+  var musicIcon = musicBtn.querySelector('.vinyl-icon');
+  var musicInfo = document.getElementById('musicInfo');
+  var playing = false;
+  var autoplayAttempted = false;
+
+  function setPlaying(state) {
+    playing = state;
+    if (state) {
+      musicBtn.classList.add('playing');
+      musicPlayer.classList.add('visible');
+      musicIcon.innerHTML = '&#9835;';
+    } else {
+      musicBtn.classList.remove('playing');
+      musicIcon.innerHTML = '&#9654;';
+    }
+  }
+
+  musicBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    autoplayAttempted = true;
+    if (playing) {
+      bgm.pause();
+      setPlaying(false);
+    } else {
+      bgm.play().then(function() {
+        setPlaying(true);
+      }).catch(function() {});
+    }
+  });
+
+  // Try autoplay on load
+  bgm.volume = 0.35;
+  bgm.play().then(function() {
+    autoplayAttempted = true;
+    setPlaying(true);
+  }).catch(function() {
+    setPlaying(false);
+  });
+
+  // Autoplay on first user interaction
+  function tryAutoplay() {
+    if (playing || autoplayAttempted) return;
+    autoplayAttempted = true;
+    bgm.play().then(function() {
+      setPlaying(true);
+    }).catch(function() {});
+  }
+
+  document.addEventListener('click', function(e) {
+    if (e.target.closest && e.target.closest('#musicBtn')) return;
+    if (!playing && !autoplayAttempted) tryAutoplay();
+  });
+  document.addEventListener('scroll', tryAutoplay, { once: true });
+  document.addEventListener('keydown', tryAutoplay, { once: true });
+
+  // Show info briefly on state change
+  bgm.addEventListener('play', function() {
+    musicPlayer.classList.add('visible');
+    setTimeout(function() { musicPlayer.classList.remove('visible'); }, 4000);
+  });
+
+  // ── 3D Tilt for liquid glass cards ──
+  var tiltCards = document.querySelectorAll('.tilt-card');
+  var tiltMaxX = 35;
+  var tiltMaxY = 18;
+  var tiltMaxZ = 6;
+
+  tiltCards.forEach(function(card) {
+    card.addEventListener('mousemove', function(e) {
+      var rect = card.getBoundingClientRect();
+      var x = e.clientX - rect.left;
+      var y = e.clientY - rect.top;
+      var cx = rect.width / 2;
+      var cy = rect.height / 2;
+      var rx = ((y - cy) / cy) * tiltMaxX;
+      var ry = ((x - cx) / cx) * -tiltMaxY;
+      var rz = ((x - cx) / cx) * tiltMaxZ;
+      card.style.transform = 'rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg) rotateZ(' + rz.toFixed(2) + 'deg)';
+    });
+    card.addEventListener('mouseleave', function() {
+      card.style.transform = 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)';
+      card.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+    });
+    card.addEventListener('mouseenter', function() {
+      card.style.transition = 'transform 0.15s ease-out';
+    });
+  });
+
+  // ── Page navigation (dots + snap) ──
+  var snapWrap = document.getElementById('snapWrap');
+  var pages = document.querySelectorAll('.page');
+  var dots = document.querySelectorAll('.dot-nav button');
+  var currentPage = 0;
+  var scrolling = false;
+
+  function setActivePage(idx) {
+    if (currentPage === idx) return;
+    currentPage = idx;
+    pages.forEach(function(p) { p.classList.remove('active'); });
+    pages[idx].classList.add('active');
+    dots.forEach(function(d) { d.classList.remove('active'); });
+    dots[idx].classList.add('active');
+  }
+
+  // Click dots to navigate
+  dots.forEach(function(dot) {
+    dot.addEventListener('click', function() {
+      var idx = parseInt(dot.getAttribute('data-page'));
+      pages[idx].scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // Nav links
+  document.querySelectorAll('[data-goto]').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      var idx = parseInt(link.getAttribute('data-goto'));
+      pages[idx].scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // Observe which page is in view
+  var pageObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+        var idx = parseInt(entry.target.getAttribute('data-page'));
+        setActivePage(idx);
+      }
+    });
+  }, { threshold: [0.5, 0.7] });
+
+  pages.forEach(function(p) { pageObserver.observe(p); });
+
+  // Parallax: hero row + sub shift on scroll (saturn keeps CSS animation intact)
+  var heroRow = document.querySelector('.hero-title-row');
+  var heroSub = document.querySelector('.hero-sub');
+  var heroSection = document.querySelector('.page[data-page="0"]');
+
+  function updateParallax() {
+    if (!heroSection || !heroRow) return;
+    var rect = heroSection.getBoundingClientRect();
+    var h = window.innerHeight;
+    var progress = Math.max(0, Math.min(1, (h - Math.abs(rect.top)) / h));
+    var offset = (1 - progress) * 60;
+    heroRow.style.transform = 'translateY(' + (offset * 0.4).toFixed(1) + 'px)';
+    if (heroSub) heroSub.style.transform = 'translateY(' + (offset * 0.2).toFixed(1) + 'px)';
+  }
+
+  snapWrap.addEventListener('scroll', updateParallax);
+  window.addEventListener('resize', updateParallax);
+  updateParallax();
+})();
+</script>
+
+</body>
+</html>

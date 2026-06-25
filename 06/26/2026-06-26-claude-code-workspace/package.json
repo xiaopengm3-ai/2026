@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@degentic/cc-trading-terminal": "^2.1.5"
+  }
+}
